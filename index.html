@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header>
+    <h1>Bodega Corita</h1>
+  </header>
+  <nav>
+    <a href="#" id="menuPuntoVenta" class="active" onclick="loadSection('puntoVenta.html', 'menuPuntoVenta')">Punto de Venta</a>
+    <a href="#" id="menuEntradaInventario" onclick="loadSection('entradaInventario.html', 'menuEntradaInventario')">Entrada de Inventario</a>
+    <a href="#" id="menuDeudas" onclick="loadSection('deudas.html', 'menuDeudas')">Deudas</a>
+    <a href="#" id="menuDeudores" onclick="loadSection('deudores.html', 'menuDeudores')">Deudores</a>
+    <a href="#" id="menuProductos" onclick="loadSection('productos.html', 'menuProductos')">Productos</a>
+  </nav>
+  <div class="container">
+    <div id="content"></div>
+  </div>
+  
+  <script>
+    function loadSection(url, menuId) {
+      fetch(url)
+        .then(response => response.text())
+        .then(data => {
+          document.getElementById('content').innerHTML = data;
+          var menuItems = document.querySelectorAll('nav a');
+          menuItems.forEach(function(item) {
+            item.classList.remove('active');
+          });
+          document.getElementById(menuId).classList.add('active');
+        });
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+      loadSection('puntoVenta.html', 'menuPuntoVenta');
+      document.getElementById('startButton').addEventListener('click', openCamera);
+    });
+
+    async function openCamera() {
+      const video = document.getElementById('video');
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        video.style.display = 'block';
+        video.srcObject = stream;
+      } catch (err) {
+        console.error('Error al acceder a la cámara: ', err);
+      }
+    }
+
+    function toggleCreditField() {
+      var paymentType = document.getElementById('paymentType').value;
+      var creditField = document.getElementById('creditField');
+      if (paymentType === 'credito') {
+        creditField.classList.remove('hidden');
+      } else {
+        creditField.classList.add('hidden');
+      }
+    }
+
+    function processSale() {
+      const productCode = document.getElementById('productCodeSale').value;
+      const productName = document.getElementById('productNameSale').value;
+      const quantity = parseInt(document.getElementById('quantitySale').value);
+      const price = parseFloat(document.getElementById('priceSale').value);
+      const total = quantity * price;
+      const paymentType = document.getElementById('paymentType').value;
+      const fullName = paymentType === 'credito' ? document.getElementById('fullName').value : '';
+
+      google.script.run.processSale(productCode, productName, quantity, price, total, paymentType, fullName);
+      alert('Venta registrada correctamente');
+
+      const salesTableBody = document.querySelector('#salesTable tbody');
+      const newRow = document.createElement('tr');
+      newRow.innerHTML = `
+        <td>${productCode}</td>
+        <td>${productName}</td>
+        <td>${quantity}</td>
+        <td>${price.toFixed(2)}</td>
+        <td>${total.toFixed(2)}</td>
+        <td>${paymentType}</td>
+        <td>${fullName}</td>
+      `;
+      salesTableBody.appendChild(newRow);
+
+      document.getElementById('saleForm').reset();
+      document.getElementById('creditField').classList.add('hidden');
+    }
+
+    function addEntry() {
+      const date = document.getElementById('date').value;
+      const productCode = document.getElementById('productCodeEntry').value;
+      const quantity = parseInt(document.getElementById('quantityEntry').value);
+      const supplier = document.getElementById('supplier').value;
+
+      google.script.run.addEntry(date, productCode, supplier, quantity);
+      google.script.run.updateInventory(productCode, quantity);
+      alert('Entrada de inventario agregada correctamente');
+    }
+
+    function recordDebt() {
+      const clientName = document.getElementById('clientName').value;
+      const amount = parseFloat(document.getElementById('amount').value);
+      const dueDate = document.getElementById('dueDate').value;
+
+      google.script.run.recordDebt(clientName, amount, dueDate);
+      alert('Deuda registrada correctamente');
+    }
+
+    function loadDebtors() {
+      google.script.run.withSuccessHandler(function(data) {
+        const tableBody = document.querySelector('#debtorsTable tbody');
+        tableBody.innerHTML = '';
+        data.forEach(row => {
+          const tr = document.createElement('tr');
+          row.forEach(cell => {
+            const td = document.createElement('td');
+            td.textContent = cell;
+            tr.appendChild(td);
+          });
+          tableBody.appendChild(tr);
+        });
+      }).getDebtorsData();
+    }
+
+    function addProduct() {
+      const productName = document.getElementById('productName').value;
+      const productCode = document.getElementById('productCode').value;
+      const productPrice = parseFloat(document.getElementById('productPrice').value);
+      const productStock = parseInt(document.getElementById('productStock').value);
+
+      google.script.run.addProduct(productName, productCode, productPrice, productStock);
+      alert('Producto agregado correctamente');
+    }
+  </script>
+</body>
+</html>
